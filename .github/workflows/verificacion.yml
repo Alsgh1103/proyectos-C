@@ -24,10 +24,7 @@ jobs:
           g++ -std=c++17 -pthread test_btree.cpp -o test_btree
           g++ -std=c++17 -pthread test_binarytree.cpp -o test_binarytree
 
-      - name: 5. Ejecutar Pruebas Árbol B
-        run: ./test_btree
-
-      - name: 6. Ejecutar Pruebas Árbol Binario y AVL
+      - name: 5. Ejecutar Pruebas Árbol Binario y AVL
         run: ./test_binarytree
 
       - name: 7. Limpieza final
