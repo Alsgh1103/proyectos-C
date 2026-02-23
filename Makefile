@@ -3,7 +3,6 @@ CXXFLAGS = -std=c++17 -Wall -g -pthread
 LDFLAGS = -pthread
 
 TARGET = main
-TEST_BTREE = test_btree
 TEST_AVLTREE = test_binarytree # <-- Nuevo ejecutable de prueba
 
 SRCS = main.cpp util.cpp pointers.cpp DemoBTree.cpp # etc...
