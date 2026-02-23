@@ -27,6 +27,6 @@ jobs:
       - name: 5. Ejecutar Pruebas Árbol Binario y AVL
         run: ./test_binarytree
 
-      - name: 7. Limpieza final
+      - name: 6. Limpieza final
         run: make clean
         if: always()
