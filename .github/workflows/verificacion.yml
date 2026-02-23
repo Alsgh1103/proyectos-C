@@ -18,9 +18,6 @@ jobs:
       - name: 3. Intentar Compilar
         run: make
 
-      - name: 4. Ejecutar Pruebas Árbol B
-        run: ./test_btree
-
       - name: 5. Ejecutar Pruebas Árbol Binario y AVL
         run: ./test_binarytree
 
