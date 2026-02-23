@@ -13,8 +13,10 @@ struct GeneralIterator
     Size        m_pos        = -1;
   public:
     GeneralIterator(Container *pContainer, Size pos=0) 
-         : m_pContainer(pContainer), m_pos(pos){}
-
+         : m_pContainer(pContainer) {
+           m_data = m_pContainer->m_data;
+           m_pos = pos;
+         }
     GeneralIterator(GeneralIterator<Container> &another)
          :  m_pContainer(another.m_pContainer),
             m_data (another.m_data),
