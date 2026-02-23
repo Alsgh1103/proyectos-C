@@ -1,8 +1,8 @@
-name: Revision Automatica - EDA  # Nombre que aparecerá en GitHub
+name: Revision Automatica - EDA
 
 on:
   pull_request:
-    branches: [ "main", "master" ] # Se activa cuando alguien envía código a estas ramas
+    branches: [ "main", "master" ]
 
 jobs:
   evaluacion:
@@ -19,10 +19,8 @@ jobs:
         run: make
 
       - name: 4. Ejecutar Pruebas Unitarias
-        # Asumiendo que el Makefile genera un ejecutable llamado 'tests'
-        # o que tienes un comando para correr la batería de pruebas.
         run: ./tests 
 
       - name: 5. Limpieza final
         run: make clean
-        if: always() # Esto asegura que se limpie incluso si la compilación o los tests fallan
+        if: always()
