@@ -15,15 +15,18 @@ jobs:
       - name: 2. Limpieza preventiva
         run: make clean
 
-      - name: 3. Intentar Compilar
-        run: make
+      - name: 3. Intentar Compilar (Codigo original del alumno)
+        run: make # Esto evalúa si su Makefile y su programa principal compilan sin errores
 
-      - name: 4. Ejecutar Pruebas Árbol B
-        run: ./test_btree
+      - name: 4. FORZAR COMPILACIÓN DE PRUEBAS (El Juez Oculto)
+        # Aquí ignoramos su Makefile y compilamos nuestros tests directamente
+        run: |
+          g++ -std=c++17 -pthread test_btree.cpp -o test_btree
+          g++ -std=c++17 -pthread test_binarytree.cpp -o test_binarytree
 
       - name: 5. Ejecutar Pruebas Árbol Binario y AVL
         run: ./test_binarytree
 
-      - name: 5. Limpieza final
+      - name: 6. Limpieza final
         run: make clean
         if: always()

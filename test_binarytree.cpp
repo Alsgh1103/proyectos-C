@@ -7,7 +7,14 @@
 // 1. INCLUSIÓN OBLIGATORIA
 // Si el alumno no creó este archivo, la compilación de GitHub fallará aquí mismo.
 #include "binarytree.h"
-#include "binarytreeAVL.h"
+#if __has_include("containers/binarytreeAVL.h")
+    #include "containers/binarytreeAVL.h"
+#elif __has_include("containers/AVL.h")
+    #include "containers/AVL.h"
+#else
+    // Si el alumno no subió ninguno de los dos, forzamos un error claro para GitHub Actions
+    #error "ERROR ALUMNO: No se encontro el archivo del AVL. Debe llamarse 'binarytreeAVL.h' o 'AVL.h' y estar en la carpeta 'containers'"
+#endif
 
 // --- CONFIGURACIÓN DEL ENTORNO DE PRUEBA ---
 // Usaremos el trait Ascendente que ya tienes implementado
