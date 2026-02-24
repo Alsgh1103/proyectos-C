@@ -92,4 +92,8 @@ int main() {
 
     std::cout << "✅ Todos los requerimientos fueron cumplidos exitosamente." << std::endl;
     return 0;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> b5af268c5fec1bb5f1d9c0202bdc7100e849c03a
