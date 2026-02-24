@@ -13,19 +13,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 2. Limpieza preventiva
-        run: make clean
+        run: make clean || true # Agregamos || true por si el make clean del alumno falla, que no detenga el proceso
 
-      - name: 3. Intentar Compilar (Codigo original del alumno)
-        run: make # Esto evalúa si su Makefile y su programa principal compilan sin errores
-
-      - name: 4. FORZAR COMPILACIÓN DE PRUEBAS (El Juez Oculto)
-        # Aquí ignoramos su Makefile y compilamos nuestros tests directamente
-        run: 
+      - name: 3. FORZAR COMPILACIÓN DE PRUEBAS aislando los Árboles
+        # Al compilar los test directamente, SOLO se revisan los .h que incluyas en el test (BTree, BinaryTree y AVL).
+        # Ignoramos por completo Demos.cpp y las listas viejas.
+        run: |
           g++ -std=c++17 -pthread test_binarytree.cpp -o test_binarytree
 
-      - name: 5. Ejecutar Pruebas Árbol Binario y AVL
+      - name: 4. Ejecutar Pruebas Árbol Binario y AVL
         run: ./test_binarytree
 
-      - name: 6. Limpieza final
-        run: make clean
+      - name: 5. Limpieza final
+        run: rm -f test_btree test_binarytree
         if: always()
