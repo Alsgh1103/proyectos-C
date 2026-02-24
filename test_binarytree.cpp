@@ -299,6 +299,11 @@ static_assert(has_begin_end<TreeType>::value,
 static_assert(has_rbegin_rend<TreeType>::value,
     "REQUERIMIENTO 3: Debe tener rbegin() y rend() (Backward Iterator)");
 
+// Req 4 – Recorridos: se verifican en TIEMPO DE EJECUCION (TestTraversals).
+// No usamos static_assert aqui porque el alumno puede usar cualquier nombre
+// (recorrido_en_orden, recorrer, etc.) que no este en nuestra lista SFINAE.
+// La funcion TestTraversals imprime [WARN] si no encuentra el metodo e imprime
+// [FAIL] (assert) solo si NINGUNO de los tres recorridos existe en absoluto.
 
 // Req 5 – Foreach y FirstThat
 static_assert(
