@@ -12,12 +12,12 @@ public:
     CBinaryTreeAVL() : CBinaryTree<Traits>() {}
 
     void Insert(const value_type &val, ref_type ref) {
-        lock_guard<mutex> lock(this->m_mutex);
+        std::lock_guard<std::recursive_mutex> lock(this->m_mtx);
         InternalInsertAVL(this->m_pRoot, nullptr, val, ref);
     }
 
     void Remove(const value_type &val) {
-        lock_guard<mutex> lock(this->m_mutex);
+        std::lock_guard<std::recursive_mutex> lock(this->m_mtx);
         InternalRemoveAVL(this->m_pRoot, val);
     }
 

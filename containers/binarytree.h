@@ -305,7 +305,7 @@ private:
     }
 
     //Operator <<
-    friend ostream& operator<<(ostream& os, CBinaryTree<Traits>& BinaryTree){
+    friend std::ostream& operator<<(std::ostream& os, CBinaryTree<Traits>& BinaryTree){
         std::lock_guard<std::recursive_mutex> lock(BinaryTree.m_mtx);
         os << "CBinaryTree" << std::endl;
         os << "[";
@@ -321,7 +321,7 @@ private:
     }
 
     //Operator >>
-    friend istream& operator>>(istream& is, CBinaryTree<Traits>& BinaryTree){
+    friend std::istream& operator>>(std::istream& is, CBinaryTree<Traits>& BinaryTree){
         std::lock_guard<std::recursive_mutex> lock(BinaryTree.m_mtx);
         size_t nElements;
         is >> nElements;
