@@ -2,3 +2,4 @@ main
 Info.plist
 *.o
 *.txt
+*.exe
