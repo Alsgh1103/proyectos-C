@@ -4,14 +4,9 @@
 #include <vector>
 #include <mutex>
 
-// --- PARCHE DE COMPILACIÓN PARA ALUMNOS ---
-// Si algún alumno olvidó poner "std::" en sus archivos (como en el ostream o mutex),
-// poner esto antes de sus includes salva su código y permite que la prueba continúe.
-using namespace std;
-
+// 1. INCLUSIÓN OBLIGATORIA
+// Si el alumno no creó este archivo, la compilación de GitHub fallará aquí mismo.
 #include "containers/binarytree.h"
-
-// Buscamos el AVL con el nombre que el alumno le haya puesto
 #if __has_include("containers/binarytreeAVL.h")
     #include "containers/binarytreeAVL.h"
 #elif __has_include("containers/AVL.h")
