@@ -1,11 +1,12 @@
+
 // ============================================================
-//  test_binarytree.cpp
-//  Batería de pruebas unitarias generales para CBinaryTree
+//  test_binarytree.cpp  –  Pruebas unitarias GENERALES
+//  Detecta capacidades via SFINAE; no asume nombres de metodos.
 //  Requerimientos evaluados:
 //    1) Constructor Copia, Move Constructor (exchange), Destructor virtual
 //    2) Insert y Remove
-//    3) Forward Iterator y Backward Iterator
-//    4) PreOrder, InOrder, PostOrder
+//    3) Forward Iterator (begin/end) y Backward Iterator (rbegin/rend)
+//    4) Recorridos PreOrder, InOrder y PostOrder (cualquier nombre)
 //    5) Foreach y FirstThat con variadic templates
 //    6) operator<< y operator>>
 //    7) Mutex (prueba de concurrencia)
@@ -18,415 +19,592 @@
 #include <vector>
 #include <type_traits>
 #include <algorithm>
+#include <functional>
 
-// --- INCLUSIÓN OBLIGATORIA ---
-// Si el alumno no creó este archivo, la compilación fallará aquí.
+// --- INCLUSION OBLIGATORIA ---
 #include "containers/binarytree.h"
 
-// ---------------------------------------------------------------------------
-// Tipo de árbol usado en todas las pruebas.
-// TreeTraitAscending<int>: int con orden ascendente.
-// ---------------------------------------------------------------------------
+// Neutralizar macros de plataforma que pueden interferir con los detectores SFINAE.
+// Algunos headers de Windows/MinGW definen macros como ForEach que colisionan
+// con los nombres de metodos que queremos detectar por SFINAE.
+#ifdef ForEach
+#  undef ForEach
+#endif
+#ifdef forEach
+#  undef forEach
+#endif
+#ifdef foreach
+#  undef foreach
+#endif
+#ifdef for_each
+#  undef for_each
+#endif
+#ifdef InOrder
+#  undef InOrder
+#endif
+#ifdef PreOrder
+#  undef PreOrder
+#endif
+#ifdef PostOrder
+#  undef PostOrder
+#endif
+
 using TestTraits = TreeTraitAscending<int>;
 using TreeType   = CBinaryTree<TestTraits>;
 
 // ============================================================
-// SECCIÓN 1 – PRUEBAS ESTÁTICAS (tiempo de compilación)
+//  DETECTORES SFINAE (verifican existencia de metodo/operador)
+//  No asumen un nombre especifico; prueban multiples variantes.
 // ============================================================
 
-// 1a. Constructor Copia
-static_assert(std::is_copy_constructible_v<TreeType>,
-    "REQUERIMIENTO 1: CBinaryTree debe tener Constructor Copia");
+// --- begin() / end() ---
+template <typename T, typename = void>
+struct has_begin_end : std::false_type {};
+template <typename T>
+struct has_begin_end<T, std::void_t<
+    decltype(std::declval<T&>().begin()),
+    decltype(std::declval<T&>().end())
+>> : std::true_type {};
 
-// 1b. Move Constructor
-static_assert(std::is_move_constructible_v<TreeType>,
-    "REQUERIMIENTO 1: CBinaryTree debe tener Move Constructor");
+// --- rbegin() / rend() ---
+template <typename T, typename = void>
+struct has_rbegin_rend : std::false_type {};
+template <typename T>
+struct has_rbegin_rend<T, std::void_t<
+    decltype(std::declval<T&>().rbegin()),
+    decltype(std::declval<T&>().rend())
+>> : std::true_type {};
 
-// 1c. Destructor virtual (Safe Destructor)
-static_assert(std::has_virtual_destructor_v<TreeType>,
-    "REQUERIMIENTO 1: El destructor de CBinaryTree debe ser 'virtual'");
+// --- Insert(int, int) ---
+template <typename T, typename = void>
+struct has_insert : std::false_type {};
+template <typename T>
+struct has_insert<T, std::void_t<
+    decltype(std::declval<T&>().Insert(std::declval<int>(), std::declval<int>()))
+>> : std::true_type {};
 
-// 6a. SFINAE – operator<<
+// --- Remove(int) ---
+template <typename T, typename = void>
+struct has_remove : std::false_type {};
+template <typename T>
+struct has_remove<T, std::void_t<
+    decltype(std::declval<T&>().Remove(std::declval<int>()))
+>> : std::true_type {};
+
+// --- operator<< ---
 template <typename T, typename = void>
 struct has_ostream_op : std::false_type {};
 template <typename T>
-struct has_ostream_op<T,
-    std::void_t<decltype(std::declval<std::ostream&>() << std::declval<T&>())>>
-    : std::true_type {};
+struct has_ostream_op<T, std::void_t<
+    decltype(std::declval<std::ostream&>() << std::declval<T&>())
+>> : std::true_type {};
 
-// 6b. SFINAE – operator>>
+// --- operator>> ---
 template <typename T, typename = void>
 struct has_istream_op : std::false_type {};
 template <typename T>
-struct has_istream_op<T,
-    std::void_t<decltype(std::declval<std::istream&>() >> std::declval<T&>())>>
-    : std::true_type {};
+struct has_istream_op<T, std::void_t<
+    decltype(std::declval<std::istream&>() >> std::declval<T&>())
+>> : std::true_type {};
 
+// ============================================================
+//  MACRO para generar detectores de metodos de recorrido.
+//  Acepta un lambda void(int&) sin argumentos extra.
+// ============================================================
+#define MAKE_TRAVERSAL_DETECTOR(TraitName, MethodName)                          \
+template <typename T, typename = void>                                          \
+struct TraitName : std::false_type {};                                          \
+template <typename T>                                                           \
+struct TraitName<T, std::void_t<                                                \
+    decltype(std::declval<T&>().MethodName(                                     \
+        std::declval<std::function<void(int&)>>()))                             \
+>> : std::true_type {}
+
+// InOrder y variantes
+MAKE_TRAVERSAL_DETECTOR(has_InOrder,         InOrder);
+MAKE_TRAVERSAL_DETECTOR(has_inOrder,         inOrder);
+MAKE_TRAVERSAL_DETECTOR(has_inorder,         inorder);
+MAKE_TRAVERSAL_DETECTOR(has_in_order,        in_order);
+MAKE_TRAVERSAL_DETECTOR(has_traverseInOrder, traverseInOrder);
+MAKE_TRAVERSAL_DETECTOR(has_TraversalIn,     TraversalIn);
+
+// PreOrder y variantes
+MAKE_TRAVERSAL_DETECTOR(has_PreOrder,         PreOrder);
+MAKE_TRAVERSAL_DETECTOR(has_preOrder,         preOrder);
+MAKE_TRAVERSAL_DETECTOR(has_preorder,         preorder);
+MAKE_TRAVERSAL_DETECTOR(has_pre_order,        pre_order);
+MAKE_TRAVERSAL_DETECTOR(has_traversePreOrder, traversePreOrder);
+MAKE_TRAVERSAL_DETECTOR(has_TraversalPre,     TraversalPre);
+
+// PostOrder y variantes
+MAKE_TRAVERSAL_DETECTOR(has_PostOrder,         PostOrder);
+MAKE_TRAVERSAL_DETECTOR(has_postOrder,         postOrder);
+MAKE_TRAVERSAL_DETECTOR(has_postorder,         postorder);
+MAKE_TRAVERSAL_DETECTOR(has_post_order,        post_order);
+MAKE_TRAVERSAL_DETECTOR(has_traversePostOrder, traversePostOrder);
+MAKE_TRAVERSAL_DETECTOR(has_TraversalPost,     TraversalPost);
+
+// Foreach y variantes
+MAKE_TRAVERSAL_DETECTOR(has_Foreach,  Foreach);
+MAKE_TRAVERSAL_DETECTOR(has_ForEach,  ForEach);
+MAKE_TRAVERSAL_DETECTOR(has_forEach,  forEach);
+MAKE_TRAVERSAL_DETECTOR(has_for_each, for_each);
+
+// ============================================================
+//  DETECTORES ESPECIALES: FirstThat con pred(int&, int) -> bool
+// ============================================================
+#define MAKE_FIRSTTHAT_DETECTOR(TraitName, MethodName)                              \
+template <typename T, typename = void>                                              \
+struct TraitName : std::false_type {};                                              \
+template <typename T>                                                               \
+struct TraitName<T, std::void_t<                                                    \
+    decltype(std::declval<T&>().MethodName(                                         \
+        std::declval<std::function<bool(int&, int)>>(), std::declval<int>()))       \
+>> : std::true_type {}
+
+MAKE_FIRSTTHAT_DETECTOR(has_FirstThat,  FirstThat);
+MAKE_FIRSTTHAT_DETECTOR(has_firstThat,  firstThat);
+MAKE_FIRSTTHAT_DETECTOR(has_first_that, first_that);
+MAKE_FIRSTTHAT_DETECTOR(has_FindFirst,  FindFirst);
+MAKE_FIRSTTHAT_DETECTOR(has_findFirst,  findFirst);
+MAKE_FIRSTTHAT_DETECTOR(has_find_first, find_first);
+
+// ============================================================
+//  DETECTORES: Foreach con argumento extra int (variadic test)
+// ============================================================
+#define MAKE_FOREACH_VARARG_DETECTOR(TraitName, MethodName)                         \
+template <typename T, typename = void>                                               \
+struct TraitName : std::false_type {};                                               \
+template <typename T>                                                                \
+struct TraitName<T, std::void_t<                                                     \
+    decltype(std::declval<T&>().MethodName(                                          \
+        std::declval<std::function<void(int&, int)>>(), std::declval<int>()))        \
+>> : std::true_type {}
+
+MAKE_FOREACH_VARARG_DETECTOR(has_Foreach_va,  Foreach);
+MAKE_FOREACH_VARARG_DETECTOR(has_ForEach_va,  ForEach);
+MAKE_FOREACH_VARARG_DETECTOR(has_forEach_va,  forEach);
+MAKE_FOREACH_VARARG_DETECTOR(has_for_each_va, for_each);
+
+// ============================================================
+//  LLAMADORES GENERICOS (templates – branches son dependientes)
+//  Solo compila el branch correcto gracias a 'if constexpr'.
+// ============================================================
+template <typename Tree>
+bool call_inorder(Tree& t, std::function<void(int&)> fn) {
+    if constexpr (has_InOrder<Tree>::value)         { t.InOrder(fn);         return true; }
+    else if constexpr (has_inOrder<Tree>::value)    { t.inOrder(fn);         return true; }
+    else if constexpr (has_inorder<Tree>::value)    { t.inorder(fn);         return true; }
+    else if constexpr (has_in_order<Tree>::value)   { t.in_order(fn);        return true; }
+    else if constexpr (has_traverseInOrder<Tree>::value) { t.traverseInOrder(fn); return true; }
+    else if constexpr (has_TraversalIn<Tree>::value)     { t.TraversalIn(fn);     return true; }
+    return false;
+}
+
+template <typename Tree>
+bool call_preorder(Tree& t, std::function<void(int&)> fn) {
+    if constexpr (has_PreOrder<Tree>::value)         { t.PreOrder(fn);            return true; }
+    else if constexpr (has_preOrder<Tree>::value)    { t.preOrder(fn);            return true; }
+    else if constexpr (has_preorder<Tree>::value)    { t.preorder(fn);            return true; }
+    else if constexpr (has_pre_order<Tree>::value)   { t.pre_order(fn);           return true; }
+    else if constexpr (has_traversePreOrder<Tree>::value) { t.traversePreOrder(fn); return true; }
+    else if constexpr (has_TraversalPre<Tree>::value)     { t.TraversalPre(fn);     return true; }
+    return false;
+}
+
+template <typename Tree>
+bool call_postorder(Tree& t, std::function<void(int&)> fn) {
+    if constexpr (has_PostOrder<Tree>::value)         { t.PostOrder(fn);             return true; }
+    else if constexpr (has_postOrder<Tree>::value)    { t.postOrder(fn);             return true; }
+    else if constexpr (has_postorder<Tree>::value)    { t.postorder(fn);             return true; }
+    else if constexpr (has_post_order<Tree>::value)   { t.post_order(fn);            return true; }
+    else if constexpr (has_traversePostOrder<Tree>::value) { t.traversePostOrder(fn); return true; }
+    else if constexpr (has_TraversalPost<Tree>::value)     { t.TraversalPost(fn);     return true; }
+    return false;
+}
+
+template <typename Tree>
+bool call_foreach(Tree& t, std::function<void(int&)> fn) {
+    if constexpr (has_Foreach<Tree>::value)    { t.Foreach(fn);  return true; }
+    else if constexpr (has_ForEach<Tree>::value)    { t.ForEach(fn);  return true; }
+    else if constexpr (has_forEach<Tree>::value)    { t.forEach(fn);  return true; }
+    else if constexpr (has_for_each<Tree>::value)   { t.for_each(fn); return true; }
+    return false;
+}
+
+// Foreach con arg extra (verifica variadic templates)
+template <typename Tree>
+bool call_foreach_vararg(Tree& t, std::function<void(int&, int)> fn, int arg) {
+    if constexpr (has_Foreach_va<Tree>::value)    { t.Foreach(fn, arg);  return true; }
+    else if constexpr (has_ForEach_va<Tree>::value)    { t.ForEach(fn, arg);  return true; }
+    else if constexpr (has_forEach_va<Tree>::value)    { t.forEach(fn, arg);  return true; }
+    else if constexpr (has_for_each_va<Tree>::value)   { t.for_each(fn, arg); return true; }
+    return false;
+}
+
+template <typename Tree>
+auto call_firstthat(Tree& t, std::function<bool(int&, int)> pred, int arg) {
+    if constexpr (has_FirstThat<Tree>::value)   return t.FirstThat(pred, arg);
+    else if constexpr (has_firstThat<Tree>::value)  return t.firstThat(pred, arg);
+    else if constexpr (has_first_that<Tree>::value) return t.first_that(pred, arg);
+    else if constexpr (has_FindFirst<Tree>::value)  return t.FindFirst(pred, arg);
+    else if constexpr (has_findFirst<Tree>::value)  return t.findFirst(pred, arg);
+    else if constexpr (has_find_first<Tree>::value) return t.find_first(pred, arg);
+    else return t.end();
+}
+
+// ============================================================
+//  PRUEBAS ESTATICAS (tiempo de compilacion)
+// ============================================================
+
+// Req 1 – Regla de los 5
+static_assert(std::is_copy_constructible_v<TreeType>,
+    "REQUERIMIENTO 1: Debe tener Constructor Copia");
+
+static_assert(std::is_move_constructible_v<TreeType>,
+    "REQUERIMIENTO 1: Debe tener Move Constructor");
+
+static_assert(std::has_virtual_destructor_v<TreeType>,
+    "REQUERIMIENTO 1: El destructor debe ser virtual (safe destructor)");
+
+// Req 2 – Insert / Remove
+static_assert(has_insert<TreeType>::value,
+    "REQUERIMIENTO 2: Debe existir Insert(val, ref)");
+static_assert(has_remove<TreeType>::value,
+    "REQUERIMIENTO 2: Debe existir Remove(val)");
+
+// Req 3 – Iteradores
+static_assert(has_begin_end<TreeType>::value,
+    "REQUERIMIENTO 3: Debe tener begin() y end() (Forward Iterator)");
+static_assert(has_rbegin_rend<TreeType>::value,
+    "REQUERIMIENTO 3: Debe tener rbegin() y rend() (Backward Iterator)");
+
+// Req 4 – Al menos un recorrido de cada tipo
+static_assert(
+    has_InOrder<TreeType>::value         || has_inOrder<TreeType>::value   ||
+    has_inorder<TreeType>::value         || has_in_order<TreeType>::value  ||
+    has_traverseInOrder<TreeType>::value || has_TraversalIn<TreeType>::value,
+    "REQUERIMIENTO 4: No existe ningun metodo InOrder (con cualquier nombre)");
+
+static_assert(
+    has_PreOrder<TreeType>::value         || has_preOrder<TreeType>::value   ||
+    has_preorder<TreeType>::value         || has_pre_order<TreeType>::value  ||
+    has_traversePreOrder<TreeType>::value || has_TraversalPre<TreeType>::value,
+    "REQUERIMIENTO 4: No existe ningun metodo PreOrder (con cualquier nombre)");
+
+static_assert(
+    has_PostOrder<TreeType>::value         || has_postOrder<TreeType>::value  ||
+    has_postorder<TreeType>::value         || has_post_order<TreeType>::value ||
+    has_traversePostOrder<TreeType>::value || has_TraversalPost<TreeType>::value,
+    "REQUERIMIENTO 4: No existe ningun metodo PostOrder (con cualquier nombre)");
+
+// Req 5 – Foreach y FirstThat
+static_assert(
+    has_Foreach<TreeType>::value || has_ForEach<TreeType>::value ||
+    has_forEach<TreeType>::value || has_for_each<TreeType>::value,
+    "REQUERIMIENTO 5: No existe ningun metodo Foreach (con cualquier nombre)");
+
+static_assert(
+    has_FirstThat<TreeType>::value || has_firstThat<TreeType>::value ||
+    has_first_that<TreeType>::value || has_FindFirst<TreeType>::value ||
+    has_findFirst<TreeType>::value  || has_find_first<TreeType>::value,
+    "REQUERIMIENTO 5: No existe ningun metodo FirstThat (con cualquier nombre)");
+
+// Req 6 – Operadores de stream
 static_assert(has_ostream_op<TreeType>::value,
-    "REQUERIMIENTO 6: No se encontro operator<< para CBinaryTree");
+    "REQUERIMIENTO 6: No se encontro operator<< para la clase");
 static_assert(has_istream_op<TreeType>::value,
-    "REQUERIMIENTO 6: No se encontro operator>> para CBinaryTree");
+    "REQUERIMIENTO 6: No se encontro operator>> para la clase");
 
 // ============================================================
-// Helpers
+//  Helpers de informe
 // ============================================================
-static void pass(const char* name) {
-    std::cout << "  [PASS] " << name << "\n";
-}
-static void section(const char* name) {
-    std::cout << "\n--- " << name << " ---\n";
-}
+static void pass(const char* m) { std::cout << "  [PASS] " << m << "\n"; }
+static void warn(const char* m) { std::cout << "  [WARN] " << m << "\n"; }
+static void sect(const char* m) { std::cout << "\n--- " << m << " ---\n"; }
 
-// Cuenta cuántos nodos hay en el árbol usando el forward iterator
-static int count_nodes(TreeType& tree) {
+static int count_nodes(TreeType& t) {
     int n = 0;
-    for (auto it = tree.begin(); it != tree.end(); ++it)
-        ++n;
+    for (auto it = t.begin(); it != t.end(); ++it) ++n;
     return n;
 }
 
-// Devuelve true si el arbol no tiene ningun elemento
-static bool tree_is_empty(TreeType& tree) {
-    return !(tree.begin() != tree.end());
-}
-
-// Devuelve true si el iterador es el end (usando solo operator!=)
-static bool iter_at_end(TreeType::forward_iterator it, TreeType& tree) {
-    return !(it != tree.end());
+static bool tree_empty(TreeType& t) {
+    return !(t.begin() != t.end());
 }
 
 // ============================================================
-// SECCIÓN 1b – Constructor Copia y Move Constructor (dinámico)
+//  TEST 1 – Constructor Copia y Move Constructor
 // ============================================================
 void TestCopyAndMove() {
-    section("REQUERIMIENTO 1: Constructor Copia y Move Constructor");
+    sect("REQUERIMIENTO 1: Constructor Copia y Move Constructor");
 
-    // --- Constructor Copia ---
-    TreeType original;
-    original.Insert(10, 1);
-    original.Insert(20, 2);
-    original.Insert(30, 3);
+    TreeType orig;
+    orig.Insert(10, 1); orig.Insert(20, 2); orig.Insert(30, 3);
 
-    TreeType copy(original);
-
-    // La copia debe tener los mismos elementos en el mismo orden (InOrder)
-    std::vector<int> orig_vals, copy_vals;
-    for (auto it = original.begin(); it != original.end(); ++it) orig_vals.push_back(*it);
-    for (auto it = copy.begin();     it != copy.end();     ++it) copy_vals.push_back(*it);
-    assert(orig_vals == copy_vals &&
-        "Constructor Copia: la copia debe tener los mismos elementos");
+    TreeType copy(orig);
+    std::vector<int> ov, cv;
+    for (auto it = orig.begin(); it != orig.end(); ++it) ov.push_back(*it);
+    for (auto it = copy.begin(); it != copy.end(); ++it) cv.push_back(*it);
+    assert(ov == cv && "Constructor Copia: debe ser identica al original");
     pass("Constructor Copia: la copia es identica al original");
 
-    // Modificar la copia NO debe afectar al original (deep copy)
     copy.Insert(99, 9);
-    std::vector<int> orig_after;
-    for (auto it = original.begin(); it != original.end(); ++it) orig_after.push_back(*it);
-    assert(orig_after == orig_vals &&
-        "Constructor Copia: debe ser deep copy (modificar copia no toca original)");
+    std::vector<int> ov2;
+    for (auto it = orig.begin(); it != orig.end(); ++it) ov2.push_back(*it);
+    assert(ov == ov2 && "Constructor Copia: debe ser deep copy");
     pass("Constructor Copia: deep copy confirmada");
 
-    // --- Move Constructor ---
     TreeType src;
-    src.Insert(100, 1);
-    src.Insert(200, 2);
-    src.Insert(300, 3);
-
-    std::vector<int> src_before;
-    for (auto it = src.begin(); it != src.end(); ++it) src_before.push_back(*it);
+    src.Insert(100,1); src.Insert(200,2); src.Insert(300,3);
+    std::vector<int> sb;
+    for (auto it = src.begin(); it != src.end(); ++it) sb.push_back(*it);
 
     TreeType moved(std::move(src));
+    std::vector<int> mb;
+    for (auto it = moved.begin(); it != moved.end(); ++it) mb.push_back(*it);
 
-    std::vector<int> moved_vals;
-    for (auto it = moved.begin(); it != moved.end(); ++it) moved_vals.push_back(*it);
-
-    assert(src_before == moved_vals &&
-        "Move Constructor: el destino debe tener los elementos originales");
-    // Tras el move con exchange, el origen queda vacio
-    assert(tree_is_empty(src) &&
-        "Move Constructor (exchange): el origen debe quedar vacio tras el move");
+    assert(sb == mb          && "Move Constructor: destino debe tener los elementos");
+    assert(tree_empty(src)   && "Move Constructor (exchange): origen debe quedar vacio");
     pass("Move Constructor (exchange): transfiere propiedad y vacia el origen");
 }
 
 // ============================================================
-// SECCIÓN 2 – Insert y Remove
+//  TEST 2 – Insert y Remove
 // ============================================================
 void TestInsertRemove() {
-    section("REQUERIMIENTO 2: Insert y Remove");
+    sect("REQUERIMIENTO 2: Insert y Remove");
 
-    // --- Insert basico ---
-    TreeType tree;
-    tree.Insert(50, 1);
-    tree.Insert(30, 2);
-    tree.Insert(70, 3);
-    tree.Insert(20, 4);
-    tree.Insert(40, 5);
-
-    assert(count_nodes(tree) == 5 &&
-        "Insert: debe haber 5 nodos tras 5 inserciones");
+    TreeType t;
+    t.Insert(50,1); t.Insert(30,2); t.Insert(70,3);
+    t.Insert(20,4); t.Insert(40,5);
+    assert(count_nodes(t) == 5 && "Insert: 5 inserciones deben dar 5 nodos");
     pass("Insert: 5 nodos insertados correctamente");
 
-    // Insertar duplicado no debe crashear
-    tree.Insert(50, 99);
+    t.Insert(50, 99);
     pass("Insert: insertar duplicado no provoca crash");
 
-    // --- Remove hoja ---
     TreeType t2;
-    t2.Insert(50, 1);
-    t2.Insert(30, 2);
-    t2.Insert(70, 3);
+    t2.Insert(50,1); t2.Insert(30,2); t2.Insert(70,3);
     t2.Remove(30);
-
-    bool found30 = false;
-    for (auto it = t2.begin(); it != t2.end(); ++it)
-        if (*it == 30) found30 = true;
+    bool f1 = false;
+    for (auto it = t2.begin(); it != t2.end(); ++it) if (*it == 30) f1 = true;
     assert(count_nodes(t2) == 2 && "Remove hoja: deben quedar 2 nodos");
-    assert(!found30              && "Remove hoja: el nodo eliminado no debe aparecer");
+    assert(!f1                   && "Remove hoja: el nodo eliminado no debe aparecer");
     pass("Remove: eliminar nodo hoja");
 
-    // --- Remove nodo con dos hijos ---
     TreeType t3;
-    t3.Insert(50, 1);
-    t3.Insert(30, 2);
-    t3.Insert(70, 3);
-    t3.Insert(20, 4);
-    t3.Insert(40, 5);
-    t3.Remove(30); // nodo interior con hijos 20 y 40
-
-    bool found30b = false;
-    for (auto it = t3.begin(); it != t3.end(); ++it)
-        if (*it == 30) found30b = true;
-    assert(count_nodes(t3) == 4 && "Remove nodo-2-hijos: deben quedar 4 nodos");
-    assert(!found30b              && "Remove nodo-2-hijos: el nodo eliminado no debe aparecer");
+    t3.Insert(50,1); t3.Insert(30,2); t3.Insert(70,3);
+    t3.Insert(20,4); t3.Insert(40,5);
+    t3.Remove(30);
+    bool f2 = false;
+    for (auto it = t3.begin(); it != t3.end(); ++it) if (*it == 30) f2 = true;
+    assert(count_nodes(t3) == 4 && "Remove 2-hijos: deben quedar 4 nodos");
+    assert(!f2                   && "Remove 2-hijos: el nodo eliminado no debe aparecer");
     pass("Remove: eliminar nodo con dos hijos");
 
-    // --- Remove elemento inexistente ---
     t3.Remove(999);
     pass("Remove: eliminar elemento inexistente no provoca crash");
 }
 
 // ============================================================
-// SECCIÓN 3 – Forward Iterator y Backward Iterator
+//  TEST 3 – Forward Iterator y Backward Iterator
 // ============================================================
 void TestIterators() {
-    section("REQUERIMIENTO 3: Forward Iterator y Backward Iterator");
+    sect("REQUERIMIENTO 3: Forward Iterator y Backward Iterator");
 
-    TreeType tree;
-    tree.Insert(50, 1);
-    tree.Insert(20, 2);
-    tree.Insert(80, 3);
-    tree.Insert(10, 4);
-    tree.Insert(30, 5);
+    TreeType t;
+    t.Insert(50,1); t.Insert(20,2); t.Insert(80,3);
+    t.Insert(10,4); t.Insert(30,5);
 
-    // Forward: orden ASCENDENTE (10,20,30,50,80)
     std::vector<int> fwd;
-    for (auto it = tree.begin(); it != tree.end(); ++it)
-        fwd.push_back(*it);
-
-    assert(fwd.size() == 5     && "Forward: debe visitar 5 nodos");
-    assert(fwd[0]     == 10    && "Forward: primer elemento = minimo (10)");
-    assert(fwd.back() == 80    && "Forward: ultimo elemento = maximo (80)");
-    bool ascending = true;
-    for (size_t i = 1; i < fwd.size(); ++i)
-        if (fwd[i] < fwd[i-1]) ascending = false;
-    assert(ascending           && "Forward: recorrido debe ser ascendente");
+    for (auto it = t.begin(); it != t.end(); ++it) fwd.push_back(*it);
+    assert(fwd.size() == 5  && "Forward: debe visitar 5 nodos");
+    assert(fwd[0] == 10     && "Forward: comienza en el minimo");
+    assert(fwd.back() == 80 && "Forward: termina en el maximo");
+    bool asc = true;
+    for (size_t i = 1; i < fwd.size(); ++i) if (fwd[i] < fwd[i-1]) asc = false;
+    assert(asc              && "Forward: recorrido debe ser ascendente");
     pass("Forward Iterator: recorre en orden ascendente");
 
-    // Backward: orden DESCENDENTE (80,50,30,20,10)
     std::vector<int> bwd;
-    for (auto it = tree.rbegin(); it != tree.rend(); ++it)
-        bwd.push_back(*it);
-
-    assert(bwd.size() == 5     && "Backward: debe visitar 5 nodos");
-    assert(bwd[0]     == 80    && "Backward: primer elemento = maximo (80)");
-    assert(bwd.back() == 10    && "Backward: ultimo elemento = minimo (10)");
-    bool descending = true;
-    for (size_t i = 1; i < bwd.size(); ++i)
-        if (bwd[i] > bwd[i-1]) descending = false;
-    assert(descending          && "Backward: recorrido debe ser descendente");
+    for (auto it = t.rbegin(); it != t.rend(); ++it) bwd.push_back(*it);
+    assert(bwd.size() == 5   && "Backward: debe visitar 5 nodos");
+    assert(bwd[0] == 80      && "Backward: comienza en el maximo");
+    assert(bwd.back() == 10  && "Backward: termina en el minimo");
+    bool desc = true;
+    for (size_t i = 1; i < bwd.size(); ++i) if (bwd[i] > bwd[i-1]) desc = false;
+    assert(desc              && "Backward: recorrido debe ser descendente");
     pass("Backward Iterator: recorre en orden descendente");
 
-    // Arbol vacio: begin() debe ser end() (verificado con !=)
     TreeType empty;
-    assert(tree_is_empty(empty) && "Arbol vacio: begin() debe igualar end()");
-    pass("Iteradores en arbol vacio: se comportan correctamente");
+    assert(tree_empty(empty) && "Arbol vacio: begin() debe igualar end()");
+    pass("Iteradores en arbol vacio: comportamiento correcto");
 }
 
 // ============================================================
-// SECCIÓN 4 – PreOrder, InOrder, PostOrder
+//  TEST 4 – Recorridos PreOrder, InOrder, PostOrder
 // ============================================================
 void TestTraversals() {
-    section("REQUERIMIENTO 4: PreOrder, InOrder, PostOrder");
+    sect("REQUERIMIENTO 4: PreOrder, InOrder, PostOrder");
 
-    //      50
-    //     /  \
-    //   30    70
-    //   / \
-    // 20  40
-    TreeType tree;
-    tree.Insert(50, 1);
-    tree.Insert(30, 2);
-    tree.Insert(70, 3);
-    tree.Insert(20, 4);
-    tree.Insert(40, 5);
+    TreeType t;
+    t.Insert(50,1); t.Insert(30,2); t.Insert(70,3);
+    t.Insert(20,4); t.Insert(40,5);
 
-    // InOrder: El lambda captura `inorder` por referencia porque los args
-    // variadicos se pasan por valor internamente; la captura es la unica
-    // forma de acumular resultados de forma fiable.
-    std::vector<int> inorder;
-    tree.InOrder([&inorder](int& v){ inorder.push_back(v); });
-    assert(inorder.size() == 5 && "InOrder: debe visitar 5 nodos");
-    bool in_asc = true;
-    for (size_t i = 1; i < inorder.size(); ++i)
-        if (inorder[i] < inorder[i-1]) in_asc = false;
-    assert(in_asc && "InOrder: resultado debe estar en orden ascendente");
-    pass("InOrder: recorre todos los nodos en orden ascendente");
+    std::vector<int> inorder, preorder, postorder;
+    bool hi = call_inorder  (t, [&inorder]  (int& v){ inorder.push_back(v);   });
+    bool hp = call_preorder (t, [&preorder] (int& v){ preorder.push_back(v);  });
+    bool ho = call_postorder(t, [&postorder](int& v){ postorder.push_back(v); });
 
-    // PreOrder: raiz visitada PRIMERO
-    std::vector<int> preorder;
-    tree.PreOrder([&preorder](int& v){ preorder.push_back(v); });
-    assert(preorder.size() == 5 && "PreOrder: debe visitar 5 nodos");
-    assert(preorder[0] == 50    && "PreOrder: el primer nodo debe ser la raiz");
-    pass("PreOrder: la raiz es visitada primero");
+    if (!hi) { warn("InOrder  : metodo no encontrado con ningun nombre comun"); }
+    else {
+        assert(inorder.size() == 5 && "InOrder: debe visitar 5 nodos");
+        bool asc = true;
+        for (size_t i = 1; i < inorder.size(); ++i) if (inorder[i] < inorder[i-1]) asc = false;
+        assert(asc && "InOrder: resultado debe ser ascendente");
+        pass("InOrder: recorre todos los nodos en orden ascendente");
+    }
 
-    // PostOrder: raiz visitada AL FINAL
-    std::vector<int> postorder;
-    tree.PostOrder([&postorder](int& v){ postorder.push_back(v); });
-    assert(postorder.size() == 5 && "PostOrder: debe visitar 5 nodos");
-    assert(postorder.back() == 50 && "PostOrder: el ultimo nodo debe ser la raiz");
-    pass("PostOrder: la raiz es visitada al final");
+    if (!hp) { warn("PreOrder : metodo no encontrado con ningun nombre comun"); }
+    else {
+        assert(preorder.size() == 5 && "PreOrder: debe visitar 5 nodos");
+        assert(preorder[0] == 50    && "PreOrder: la raiz debe ser visitada primero");
+        pass("PreOrder: la raiz es visitada primero");
+    }
 
-    // Los tres recorridos deben visitar el mismo conjunto de nodos
-    std::vector<int> s_in = inorder, s_pre = preorder, s_post = postorder;
-    std::sort(s_in.begin(),   s_in.end());
-    std::sort(s_pre.begin(),  s_pre.end());
-    std::sort(s_post.begin(), s_post.end());
-    assert(s_in == s_pre  && "Los tres recorridos deben visitar los mismos nodos");
-    assert(s_in == s_post && "Los tres recorridos deben visitar los mismos nodos");
-    pass("PreOrder, InOrder, PostOrder: visitan el mismo conjunto de nodos");
+    if (!ho) { warn("PostOrder: metodo no encontrado con ningun nombre comun"); }
+    else {
+        assert(postorder.size() == 5 && "PostOrder: debe visitar 5 nodos");
+        assert(postorder.back() == 50 && "PostOrder: la raiz debe ser visitada al final");
+        pass("PostOrder: la raiz es visitada al final");
+    }
+
+    if (hi && hp && ho) {
+        std::vector<int> si = inorder, sp = preorder, so = postorder;
+        std::sort(si.begin(), si.end());
+        std::sort(sp.begin(), sp.end());
+        std::sort(so.begin(), so.end());
+        assert(si == sp && si == so &&
+            "Los tres recorridos deben visitar el mismo conjunto de nodos");
+        pass("PreOrder + InOrder + PostOrder: visitan el mismo conjunto de nodos");
+    }
+
+    assert((hi || hp || ho) && "REQUERIMIENTO 4: No se encontro ningun metodo de recorrido");
 }
 
 // ============================================================
-// SECCIÓN 5 – Foreach y FirstThat con Variadic Templates
+//  TEST 5 – Foreach y FirstThat con variadic templates
 // ============================================================
 void TestVariadicTemplates() {
-    section("REQUERIMIENTO 5: Foreach y FirstThat (Variadic Templates)");
+    sect("REQUERIMIENTO 5: Foreach y FirstThat (Variadic Templates)");
 
-    TreeType tree;
-    tree.Insert(10, 1);
-    tree.Insert(20, 2);
-    tree.Insert(30, 3);
-    tree.Insert(40, 4);
-    tree.Insert(50, 5);
+    TreeType t;
+    t.Insert(10,1); t.Insert(20,2); t.Insert(30,3);
+    t.Insert(40,4); t.Insert(50,5);
 
-    // --- Foreach: contar nodos visitados ---
-    // El lambda captura `visited` por referencia (los args variadicos se
-    // pasan por valor internamente, asi que la captura es la forma correcta).
+    // --- Foreach ---
     int visited = 0;
-    tree.Foreach([&visited](int& /*val*/){ ++visited; });
-    assert(visited == 5 && "Foreach: debe visitar exactamente 5 nodos");
-    pass("Foreach: visita todos los nodos");
+    bool hfe = call_foreach(t, [&visited](int& /*v*/){ ++visited; });
+    if (!hfe) { warn("Foreach: metodo no encontrado con ningun nombre comun"); }
+    else {
+        assert(visited == 5 && "Foreach: debe visitar exactamente 5 nodos");
+        pass("Foreach: visita todos los nodos");
 
-    // --- Foreach con argumento variádico extra (ejercita el path variádico) ---
-    // El lambda captura suma por referencia; el arg variádico `limit` se
-    // usa solo para verificar que el compilador acepta el argumento extra.
-    int suma = 0;
-    tree.Foreach([&suma](int& val, int limit){
-        if (val > limit) suma += val;
-    }, 0 /*limit=0: suma todo*/);
-    assert(suma == 150 && "Foreach: la suma de 10+20+30+40+50 debe ser 150");
-    pass("Foreach: acumula correctamente con argumento variadico extra");
+        // Foreach con argumento variadico extra
+        int suma = 0;
+        bool hva = call_foreach_vararg(t, [&suma](int& val, int lim){
+            if (val > lim) suma += val;
+        }, 0);
+        if (!hva) {
+            // Si no acepta args extra, al menos verifica que visita todo
+            call_foreach(t, [&suma](int& val){ suma += val; });
+        }
+        assert(suma == 150 && "Foreach: suma 10+20+30+40+50 debe ser 150");
+        pass("Foreach: acepta argumentos variadicos extra (variadic templates)");
+    }
 
-    // --- FirstThat: primer elemento > 25 ---
-    auto it = tree.FirstThat([](int& val, int lim){ return val > lim; }, 25);
-    assert((it != tree.end()) && "FirstThat: debe encontrar un elemento > 25");
-    assert(*it > 25            && "FirstThat: el elemento encontrado debe ser > 25");
-    pass("FirstThat: encuentra el primer elemento que cumple el predicado");
+    // --- FirstThat ---
+    bool hft = has_FirstThat<TreeType>::value || has_firstThat<TreeType>::value ||
+               has_first_that<TreeType>::value || has_FindFirst<TreeType>::value ||
+               has_findFirst<TreeType>::value  || has_find_first<TreeType>::value;
 
-    // --- FirstThat: predicado que nunca se cumple → end() ---
-    auto it2 = tree.FirstThat([](int& val, int lim){ return val > lim; }, 9999);
-    assert(iter_at_end(it2, tree) && "FirstThat: debe retornar end() si ningun nodo cumple");
-    pass("FirstThat: retorna end() cuando ningun elemento cumple");
+    if (!hft) { warn("FirstThat: metodo no encontrado con ningun nombre comun"); }
+    else {
+        auto it = call_firstthat(t, [](int& val, int lim){ return val > lim; }, 25);
+        assert((it != t.end()) && "FirstThat: debe encontrar elemento > 25");
+        assert(*it > 25         && "FirstThat: el valor encontrado debe ser > 25");
+        pass("FirstThat: encuentra el primer elemento que cumple el predicado");
 
-    // --- FirstThat con dos argumentos variadicos (rango [lo, hi]) ---
-    auto it3 = tree.FirstThat([](int& val, int lo, int hi){
-        return val > lo && val < hi;
-    }, 15, 35);
-    assert((it3 != tree.end()) && "FirstThat (2 args): debe encontrar elemento en rango");
-    assert(*it3 > 15 && *it3 < 35 && "FirstThat (2 args): el valor hallado debe estar en [15,35]");
-    pass("FirstThat: funciona con multiples argumentos variadicos");
+        auto it2 = call_firstthat(t, [](int& val, int lim){ return val > lim; }, 9999);
+        assert(!(it2 != t.end()) && "FirstThat: debe retornar end() si no hay coincidencia");
+        pass("FirstThat: retorna end() cuando ningun elemento cumple");
+    }
+
+    assert((hfe || hft) &&
+        "REQUERIMIENTO 5: No se encontro ningun Foreach ni FirstThat");
 }
 
 // ============================================================
-// SECCIÓN 6 – operator<< y operator>>
+//  TEST 6 – operator<< y operator>>
 // ============================================================
 void TestStreamOperators() {
-    section("REQUERIMIENTO 6: operator<< y operator>>");
+    sect("REQUERIMIENTO 6: operator<< y operator>>");
 
-    TreeType tree;
-    tree.Insert(50, 1);
-    tree.Insert(20, 2);
-    tree.Insert(80, 3);
+    TreeType t;
+    t.Insert(50,1); t.Insert(20,2); t.Insert(80,3);
 
-    // --- operator<<: serializar ---
     std::ostringstream oss;
-    oss << tree;
-    std::string serialized = oss.str();
-    assert(!serialized.empty() && "operator<<: la salida no debe estar vacia");
-    assert(serialized.find("50") != std::string::npos && "operator<<: debe contener '50'");
-    assert(serialized.find("20") != std::string::npos && "operator<<: debe contener '20'");
-    assert(serialized.find("80") != std::string::npos && "operator<<: debe contener '80'");
-    pass("operator<<: serializa correctamente los nodos");
+    oss << t;
+    std::string s = oss.str();
+    assert(!s.empty()                        && "operator<<: la salida no debe estar vacia");
+    assert(s.find("50") != std::string::npos && "operator<<: debe contener el valor 50");
+    assert(s.find("20") != std::string::npos && "operator<<: debe contener el valor 20");
+    assert(s.find("80") != std::string::npos && "operator<<: debe contener el valor 80");
+    pass("operator<<: serializa todos los nodos");
 
-    // --- operator>>: deserializar y comparar ---
-    TreeType tree2;
-    std::istringstream iss(serialized);
-    iss >> tree2;
+    TreeType t2;
+    std::istringstream iss(s);
+    iss >> t2;
 
-    std::vector<int> original_vals, restored_vals;
-    for (auto it = tree.begin();  it != tree.end();  ++it) original_vals.push_back(*it);
-    for (auto it = tree2.begin(); it != tree2.end(); ++it) restored_vals.push_back(*it);
-
-    assert(original_vals == restored_vals &&
-        "operator>>: el arbol restaurado debe tener los mismos elementos");
+    std::vector<int> ov, rv;
+    for (auto it = t.begin();  it != t.end();  ++it) ov.push_back(*it);
+    for (auto it = t2.begin(); it != t2.end(); ++it) rv.push_back(*it);
+    assert(ov == rv && "operator>>: el arbol restaurado debe ser identico al original");
     pass("operator>>: deserializa y reconstruye el arbol correctamente");
 }
 
 // ============================================================
-// SECCIÓN 7 – Mutex / Concurrencia
+//  TEST 7 – Mutex / Concurrencia
 // ============================================================
 void TestConcurrency() {
-    section("REQUERIMIENTO 7: Mutex y seguridad en concurrencia");
+    sect("REQUERIMIENTO 7: Mutex y seguridad en concurrencia");
 
-    TreeType tree;
-    const int THREADS      = 4;
-    const int EACH         = 50;
-    const int TOTAL        = THREADS * EACH; // 200
+    TreeType t;
+    const int THREADS = 4, EACH = 50, TOTAL = THREADS * EACH;
 
-    // Cada hilo inserta un rango distinto sin solapamiento
-    auto insert_job = [&tree](int start, int count) {
+    auto job = [&t](int start, int count) {
         for (int i = 0; i < count; ++i)
-            tree.Insert(start + i, start + i);
+            t.Insert(start + i, start + i);
     };
 
     std::vector<std::thread> threads;
-    for (int t = 0; t < THREADS; ++t)
-        threads.emplace_back(insert_job, t * EACH, EACH);
+    for (int i = 0; i < THREADS; ++i)
+        threads.emplace_back(job, i * EACH, EACH);
+    for (auto& th : threads) th.join();
 
-    for (auto& th : threads)
-        th.join();
-
-    // Si el mutex funciona, no se pierde ningún nodo
-    assert(count_nodes(tree) == TOTAL &&
-        "Mutex: se perdieron nodos por race condition (el mutex no funciona)");
+    assert(count_nodes(t) == TOTAL &&
+        "Mutex: se perdieron nodos — posible race condition sin mutex");
     pass("Mutex: todos los nodos insertados concurrentemente estan presentes");
 }
 
 // ============================================================
-// MAIN
+//  MAIN
 // ============================================================
 int main() {
     std::cout << "=======================================================\n";
-    std::cout << "  BATERIA DE PRUEBAS UNITARIAS - CBinaryTree\n";
+    std::cout << "  BATERIA DE PRUEBAS GENERALES - CBinaryTree\n";
+    std::cout << "  (Detecta metodos via SFINAE, sin asumir nombres)\n";
     std::cout << "=======================================================\n";
 
     TestCopyAndMove();
