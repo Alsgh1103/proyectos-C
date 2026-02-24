@@ -6,7 +6,8 @@
 
 // 1. INCLUSIÓN OBLIGATORIA
 // Si el alumno no creó este archivo, la compilación de GitHub fallará aquí mismo.
-#include "binarytree.h"
+#include "containers/binarytree.h"
+#include "containers/AVL.h"
 #if __has_include("containers/binarytreeAVL.h")
     #include "containers/binarytreeAVL.h"
 #elif __has_include("containers/AVL.h")
