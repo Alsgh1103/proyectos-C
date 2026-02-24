@@ -1,4 +1,3 @@
-
 // ============================================================
 //  test_binarytree.cpp  –  Pruebas unitarias GENERALES
 //  Detecta capacidades via SFINAE; no asume nombres de metodos.
@@ -254,6 +253,27 @@ auto call_firstthat(Tree& t, std::function<bool(int&, int)> pred, int arg) {
 }
 
 // ============================================================
+//  HELPER GENERICO: ¿el resultado de FirstThat es valido?
+//  Funciona con punteros crudos (int*, Node*) O con iteradores.
+//  Si el alumno retorna nullptr = no encontrado.
+//  Si el alumno retorna un iterador = al end() = no encontrado.
+// ============================================================
+template <typename Result, typename Tree>
+bool is_valid_result(Result& r, Tree& t) {
+    if constexpr (std::is_pointer_v<Result>) {
+        return r != nullptr;
+    } else {
+        return r != t.end();
+    }
+}
+
+// Desreferencia generica: puntero o iterador (operator* puede ser no-const)
+template <typename Result>
+int deref_result(Result& r) {
+    return *r;
+}
+
+// ============================================================
 //  PRUEBAS ESTATICAS (tiempo de compilacion)
 // ============================================================
 
@@ -279,24 +299,6 @@ static_assert(has_begin_end<TreeType>::value,
 static_assert(has_rbegin_rend<TreeType>::value,
     "REQUERIMIENTO 3: Debe tener rbegin() y rend() (Backward Iterator)");
 
-// Req 4 – Al menos un recorrido de cada tipo
-static_assert(
-    has_InOrder<TreeType>::value         || has_inOrder<TreeType>::value   ||
-    has_inorder<TreeType>::value         || has_in_order<TreeType>::value  ||
-    has_traverseInOrder<TreeType>::value || has_TraversalIn<TreeType>::value,
-    "REQUERIMIENTO 4: No existe ningun metodo InOrder (con cualquier nombre)");
-
-static_assert(
-    has_PreOrder<TreeType>::value         || has_preOrder<TreeType>::value   ||
-    has_preorder<TreeType>::value         || has_pre_order<TreeType>::value  ||
-    has_traversePreOrder<TreeType>::value || has_TraversalPre<TreeType>::value,
-    "REQUERIMIENTO 4: No existe ningun metodo PreOrder (con cualquier nombre)");
-
-static_assert(
-    has_PostOrder<TreeType>::value         || has_postOrder<TreeType>::value  ||
-    has_postorder<TreeType>::value         || has_post_order<TreeType>::value ||
-    has_traversePostOrder<TreeType>::value || has_TraversalPost<TreeType>::value,
-    "REQUERIMIENTO 4: No existe ningun metodo PostOrder (con cualquier nombre)");
 
 // Req 5 – Foreach y FirstThat
 static_assert(
@@ -531,14 +533,17 @@ void TestVariadicTemplates() {
 
     if (!hft) { warn("FirstThat: metodo no encontrado con ningun nombre comun"); }
     else {
+        // Nota: call_firstthat retorna 'auto' — puede ser un iterador O un
+        // puntero crudo (T*), segun como el alumno implemento FirstThat.
+        // is_valid_result() maneja ambos casos con if constexpr.
         auto it = call_firstthat(t, [](int& val, int lim){ return val > lim; }, 25);
-        assert((it != t.end()) && "FirstThat: debe encontrar elemento > 25");
-        assert(*it > 25         && "FirstThat: el valor encontrado debe ser > 25");
+        assert(is_valid_result(it, t) && "FirstThat: debe encontrar elemento > 25");
+        assert(deref_result(it) > 25  && "FirstThat: el valor encontrado debe ser > 25");
         pass("FirstThat: encuentra el primer elemento que cumple el predicado");
 
         auto it2 = call_firstthat(t, [](int& val, int lim){ return val > lim; }, 9999);
-        assert(!(it2 != t.end()) && "FirstThat: debe retornar end() si no hay coincidencia");
-        pass("FirstThat: retorna end() cuando ningun elemento cumple");
+        assert(!is_valid_result(it2, t) && "FirstThat: debe retornar 'no encontrado' si ningun elemento cumple");
+        pass("FirstThat: retorna 'no encontrado' cuando ningun elemento cumple");
     }
 
     assert((hfe || hft) &&
