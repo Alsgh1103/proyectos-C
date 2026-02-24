@@ -13,17 +13,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 2. Limpieza preventiva
-        run: make clean || true # Agregamos || true por si el make clean del alumno falla, que no detenga el proceso
+        run: make clean || true
 
-      - name: 3. FORZAR COMPILACIÓN DE PRUEBAS aislando los Árboles
-        # Al compilar los test directamente, SOLO se revisan los .h que incluyas en el test (BTree, BinaryTree y AVL).
-        # Ignoramos por completo Demos.cpp y las listas viejas.
+      - name: 3. Compilar pruebas unitarias de CBinaryTree
+        # Solo requiere containers/binarytree.h y sus dependencias internas.
+        # No depende de Demos.cpp ni de archivos externos.
         run: |
           g++ -std=c++17 -pthread test_binarytree.cpp -o test_binarytree
 
-      - name: 4. Ejecutar Pruebas Árbol Binario y AVL
+      - name: 4. Ejecutar pruebas unitarias
         run: ./test_binarytree
 
       - name: 5. Limpieza final
-        run: rm -f test_btree test_binarytree
+        run: rm -f test_binarytree
         if: always()
