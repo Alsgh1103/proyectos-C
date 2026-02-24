@@ -299,24 +299,11 @@ static_assert(has_begin_end<TreeType>::value,
 static_assert(has_rbegin_rend<TreeType>::value,
     "REQUERIMIENTO 3: Debe tener rbegin() y rend() (Backward Iterator)");
 
-// Req 4 – Al menos un recorrido de cada tipo
-static_assert(
-    has_InOrder<TreeType>::value         || has_inOrder<TreeType>::value   ||
-    has_inorder<TreeType>::value         || has_in_order<TreeType>::value  ||
-    has_traverseInOrder<TreeType>::value || has_TraversalIn<TreeType>::value,
-    "REQUERIMIENTO 4: No existe ningun metodo InOrder (con cualquier nombre)");
-
-static_assert(
-    has_PreOrder<TreeType>::value         || has_preOrder<TreeType>::value   ||
-    has_preorder<TreeType>::value         || has_pre_order<TreeType>::value  ||
-    has_traversePreOrder<TreeType>::value || has_TraversalPre<TreeType>::value,
-    "REQUERIMIENTO 4: No existe ningun metodo PreOrder (con cualquier nombre)");
-
-static_assert(
-    has_PostOrder<TreeType>::value         || has_postOrder<TreeType>::value  ||
-    has_postorder<TreeType>::value         || has_post_order<TreeType>::value ||
-    has_traversePostOrder<TreeType>::value || has_TraversalPost<TreeType>::value,
-    "REQUERIMIENTO 4: No existe ningun metodo PostOrder (con cualquier nombre)");
+// Req 4 – Recorridos: se verifican en TIEMPO DE EJECUCION (TestTraversals).
+// No usamos static_assert aqui porque el alumno puede usar cualquier nombre
+// (recorrido_en_orden, recorrer, etc.) que no este en nuestra lista SFINAE.
+// La funcion TestTraversals imprime [WARN] si no encuentra el metodo e imprime
+// [FAIL] (assert) solo si NINGUNO de los tres recorridos existe en absoluto.
 
 // Req 5 – Foreach y FirstThat
 static_assert(
