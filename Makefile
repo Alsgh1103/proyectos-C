@@ -6,7 +6,7 @@ TARGET = main
 SRCS = main.cpp util.cpp pointers.cpp \
        Demos.cpp \
 	   #sorting.cpp DemoArray.cpp
-OBJS = $(SRCS:.cpp=.o)
+	OBJS = $(SRCS:.cpp=.o)
 
 all: $(TARGET)
 
