@@ -253,6 +253,27 @@ auto call_firstthat(Tree& t, std::function<bool(int&, int)> pred, int arg) {
 }
 
 // ============================================================
+//  HELPER GENERICO: ¿el resultado de FirstThat es valido?
+//  Funciona con punteros crudos (int*, Node*) O con iteradores.
+//  Si el alumno retorna nullptr = no encontrado.
+//  Si el alumno retorna un iterador = al end() = no encontrado.
+// ============================================================
+template <typename Result, typename Tree>
+bool is_valid_result(Result& r, Tree& t) {
+    if constexpr (std::is_pointer_v<Result>) {
+        return r != nullptr;
+    } else {
+        return r != t.end();
+    }
+}
+
+// Desreferencia generica: puntero o iterador (operator* puede ser no-const)
+template <typename Result>
+int deref_result(Result& r) {
+    return *r;
+}
+
+// ============================================================
 //  PRUEBAS ESTATICAS (tiempo de compilacion)
 // ============================================================
 
@@ -530,14 +551,17 @@ void TestVariadicTemplates() {
 
     if (!hft) { warn("FirstThat: metodo no encontrado con ningun nombre comun"); }
     else {
+        // Nota: call_firstthat retorna 'auto' — puede ser un iterador O un
+        // puntero crudo (T*), segun como el alumno implemento FirstThat.
+        // is_valid_result() maneja ambos casos con if constexpr.
         auto it = call_firstthat(t, [](int& val, int lim){ return val > lim; }, 25);
-        assert((it != t.end()) && "FirstThat: debe encontrar elemento > 25");
-        assert(*it > 25         && "FirstThat: el valor encontrado debe ser > 25");
+        assert(is_valid_result(it, t) && "FirstThat: debe encontrar elemento > 25");
+        assert(deref_result(it) > 25  && "FirstThat: el valor encontrado debe ser > 25");
         pass("FirstThat: encuentra el primer elemento que cumple el predicado");
 
         auto it2 = call_firstthat(t, [](int& val, int lim){ return val > lim; }, 9999);
-        assert(!(it2 != t.end()) && "FirstThat: debe retornar end() si no hay coincidencia");
-        pass("FirstThat: retorna end() cuando ningun elemento cumple");
+        assert(!is_valid_result(it2, t) && "FirstThat: debe retornar 'no encontrado' si ningun elemento cumple");
+        pass("FirstThat: retorna 'no encontrado' cuando ningun elemento cumple");
     }
 
     assert((hfe || hft) &&
